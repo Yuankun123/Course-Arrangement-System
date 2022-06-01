@@ -1,3 +1,3 @@
 # Course-Arrangement-System
-An attempt to handle commmon problems in course arranging, including arranging time for elective and restricted elective courses.
+An attempt to handle common issues in course arranging, including arranging time for elective and restricted elective courses.
 To be updated ....
