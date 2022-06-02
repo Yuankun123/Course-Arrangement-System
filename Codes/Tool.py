@@ -1,7 +1,7 @@
 class TextProcessor:
     @staticmethod
     def remove_end_blank(string: str):
-        while string[-1] == ' ':
+        while string and string[-1] == ' ':
             string = string[:-1]
         return string
 

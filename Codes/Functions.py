@@ -1042,8 +1042,8 @@ class Shadow(TimeTable):
 
 class CourseSystem:
     def __init__(self, name, sch: 'School'):
-        self.periods_per_day = 4
         self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+        self.timeList = ['08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40', '15:50 - 16:50']
         Session.i = 0
 
         self.na = name
@@ -1055,6 +1055,10 @@ class CourseSystem:
 
         self.courseTable = CourseTable(self)
         self.sns: list[Session] = []  # for session searching
+
+    @property
+    def periods_per_day(self):
+        return len(self.timeList)
 
     def search_sn(self, sni):
         return self.sns[sni]
@@ -1101,13 +1105,10 @@ class CourseSystem:
             return res
 
     def save_as_csv(self, saving_path):
-        reversed_form = [['', '', '', '', '', ''],
-                         ['', '', '', '', '', ''],
-                         ['', '', '', '', '', ''],
-                         ['', '', '', '', '', ''],
-                         ['', '', '', '', '', ''],
-                         ['', '', '', '', '', '']
-                         ]
+        reversed_form = [['Time'] + self.days]
+        rows = [[self.timeList[i]] + ['']*len(self.days) for i in range(self.periods_per_day)]
+        reversed_form.extend(rows)
+
         for day in range(len(self.days)):
             for row in range(self.periods_per_day):
                 temp = ''

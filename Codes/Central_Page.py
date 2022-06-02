@@ -5,14 +5,6 @@ import threading
 from Functions import *
 colorList = ['sky blue', 'aquamarine', 'light goldenrod', 'bisque', 'rosy brown', 'orange', '#B9CFAD', '#FCAE1E',
              '#59788E']
-CourseTableTemplate_list = [
-    ['Time', '08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40', '15:50 - 16:50'],
-    ['Mon', [[-1]], [[-1]], [[-1]], [[-1]], [[-1]]],
-    ['Tue', [[-1]], [[-1]], [[-1]], [[-1]], [[-1]]],
-    ['Wed', [[-1]], [[-1]], [[-1]], [[-1]], [[-1]]],
-    ['Thu', [[-1]], [[-1]], [[-1]], [[-1]], [[-1]]],
-    ['Fri', [[-1]], [[-1]], [[-1]], [[-1]], [[-1]]]
-]
 
 
 # Cs info frame
@@ -194,8 +186,10 @@ class CSInfoFrame(LabelFrame):
                             e_in.insert('end', index_for_display + ' ' + lsn.sn.na + '\n')
                             e_in.tag_add('start', f'{lsni + 2}.0', f'{lsni + 2}.2')
                             e_in.tag_configure('start', foreground='blue')
-                    else:
-                        e_in.insert('end', CourseTableTemplate_list[j_in][i_in])  # headers
+                    elif i_in == 0:  # week days
+                        e_in.insert('end', self.cs.days[j_in - 1])
+                    else:  # j_in == 0, time headers
+                        e_in.insert('end', self.cs.timeList[j_in - 1])
             disable_text_array()
 
         def switch_two_slots():
@@ -220,14 +214,14 @@ class CSInfoFrame(LabelFrame):
             insert_form()
 
         def export_csv():
-            saving_path = filedialog.asksaveasfilename(initialfile='Course Arrangement.csv',
+            saving_path = filedialog.asksaveasfilename(initialfile=f'Course Arrangement for {self.cs.na}.csv',
                                                        title="Save course arrangement",
                                                        filetypes=(("csv files", "*.csv"),))
             if saving_path:
                 self.cs.save_as_csv(saving_path)
 
         def save_draft():
-            saving_path = filedialog.asksaveasfilename(initialfile='Arrangement Draft.txt',
+            saving_path = filedialog.asksaveasfilename(initialfile=f'Arrangement Draft for {self.cs.na}.txt',
                                                        title="Save course draft",
                                                        filetypes=(("txt file", "*.txt"),))
             if saving_path:
