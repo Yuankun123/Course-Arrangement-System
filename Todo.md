@@ -7,3 +7,5 @@ This a to-do list for myself. However, if you are interested and have time, you 
 5. Distinguish the functions of __repr__() and that of display()
 6. Add 'update file change' feature
 7. Serializaiton for Function.School
+8. Default filename for saving should include the name of the course system.
+9. Saved CSV lacks headers
