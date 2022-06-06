@@ -304,8 +304,8 @@ class CentralPage(Frame):
         self.pack(fill='both', expand='yes')
 
         # Front Page
-        title = Label(self, text='Automatic Course Arranging System', style='1.TLabel')
-        title.place(x=0, y=0, height=50, width=450)
+        title = Label(self, text='Automatic Course Arrangement System', style='1.TLabel')
+        title.place(x=0, y=0, height=50, width=550)
 
         self.courseSystemFrame = LabelFrame(self, text='Course Systems')
         self.courseSystemFrame.place(x=5, y=110, width=165, height=300)
@@ -324,9 +324,9 @@ class CentralPage(Frame):
 
         self.csInfoFrames: list[CSInfoFrame] = []
 
-        about_info = Text(self, autostyle=False, height=5, width=30, font=('Times New Roman', 12), relief='flat')
+        about_info = Text(self, autostyle=False, height=3, width=30, font=('Times New Roman', 12), relief='flat')
         about_info.insert('end', 'Author: Yuankun Zou\nE-Mail: Kunko2005@hotmail.com\nAll Rights Reserved')
-        about_info.place(x=470, y=10)
+        about_info.place(x=460, y=40)
         about_info.configure(state='disabled')
 
         name = simpledialog.askstring(title='Welcome',
