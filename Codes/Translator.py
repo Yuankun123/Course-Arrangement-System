@@ -18,6 +18,7 @@ class Translator:
 
 
 if __name__ == '__main__':
-    tr1 = Translator(0)  # English translator
-    tr2 = Translator(1)  # Chinese translator
-    print(tr1.title, tr2.title)
+    class _Client:  # hide code
+        tr1 = Translator(0)  # English translator
+        tr2 = Translator(1)  # Chinese translator
+        print(tr1.title, tr2.title)
