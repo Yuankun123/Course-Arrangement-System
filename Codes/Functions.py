@@ -54,8 +54,8 @@ Contractions:
 """
 import csv
 import copy
-
-from Tool import isoverlapped, TextProcessor, find_repeat_items
+from Tool import *
+from Translator import *
 from tqdm import tqdm
 import pickle
 # Empty Form: a two dimensional form, each grid (except headers) contains a list of course entries.
@@ -807,38 +807,6 @@ class CompoundModule:
             cmpd_gp.confirm()
         self.submos.append(new_submo)
         return True
-
-
-class TimeTable:
-    all_t: tuple
-
-    class Time:
-        i = 0
-
-        def __init__(self, table):
-            self.tb = table
-            self.vtc_i = table.Time.i  # counted vertically
-            self.day = self.vtc_i // self.tb.height  # day start from 0
-            self.row = self.vtc_i % self.tb.height  # row start from 0
-            self.hrz_i = self.row * self.tb.width + self.day
-            table.Time.i += 1
-
-    def __init__(self, width, height):
-        self.Time.i = 0
-        self.width = width
-        self.height = height
-        self.all_t = tuple([self.Time(self) for _ in range(self.width * self.height)])
-
-    def __getitem__(self, item: tuple | int):
-        if type(item) is tuple:
-            day, row = item
-            for t in self.all_t:
-                if t.day == day and t.row == row:
-                    return t
-        if type(item) is int:
-            for t in self.all_t:
-                if t.vtc_i == item:
-                    return t
 
 
 class CourseTable(TimeTable):
