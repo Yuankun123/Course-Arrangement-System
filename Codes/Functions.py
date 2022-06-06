@@ -957,11 +957,16 @@ class CourseTable(TimeTable):
         return res
 
     def _shadow_adjust(self, shd: 'Shadow'):
+        print('len', len(self.all_t))
         for ti in range(len(self.all_t)):
             temp = 1
-            while isoverlapped(self.all_t[ti].insts, shd.all_t[ti].unavail_insts):
-                self.switch_two_time_slots(ti, ti + temp)
-                temp += 1
+            try:
+                while isoverlapped(self.all_t[ti].insts, shd.all_t[ti].unavail_insts):
+                    self.switch_two_time_slots(ti, ti + temp)
+                    temp += 1
+            except IndexError:
+                print('len', len(shd.all_t))
+                print(ti)
 
     def cross_adjust(self):
         """adjust according to other cs' shadows and the shadow of the school"""
@@ -1094,7 +1099,7 @@ class School:
         self.na = name
         self.instDict: dict[str, Instructor] = {}
         self.csDict: dict[str, CourseSystem] = {}
-        self.shadow = Shadow(5, 4)
+        self.shadow = Shadow(5, 5)
 
     def add_inst(self, name) -> Instructor:
         if name not in self.instDict.keys():
@@ -1123,12 +1128,12 @@ if __name__ == '__main__':
     Sch = School('BHSFIC')
 
     Gr1 = Sch.add_cs('Grade 11')
-    Gr1.info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\Test\\courseInfo v1.0.csv'
+    Gr1.info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\课程信息示例\\courseInfo v2.0.csv'
     Gr1.read_mo_info()
     Gr1.arrange_crs()
 
     Gr2 = Sch.add_cs('Grade 12')
-    Gr2.info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\Test\\courseInfo v1.0.csv'
+    Gr2.info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\课程信息示例\\courseInfo v2.0.csv'
     Gr2.read_mo_info()
     Gr2.arrange_crs()
 
