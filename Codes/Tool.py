@@ -1,5 +1,5 @@
 class TimeTable:
-    all_t: tuple
+    _all_t: tuple
 
     class Time:
         i = 0
@@ -16,18 +16,29 @@ class TimeTable:
         self.Time.i = 0
         self.width = width
         self.height = height
-        self.all_t = tuple([self.Time(self) for _ in range(self.width * self.height)])
+        self._all_t = tuple([self.Time(self) for _ in range(self.width * self.height)])
 
     def __getitem__(self, item: tuple | int):
         if type(item) is tuple:
             day, row = item
-            for t in self.all_t:
+            for t in self:
                 if t.day == day and t.row == row:
                     return t
         if type(item) is int:
-            for t in self.all_t:
+            for t in self:
                 if t.vtc_i == item:
                     return t
+
+    def __len__(self):
+        return len(self._all_t)
+
+    def __iter__(self):
+        return self._all_t.__iter__()
+
+    def min_size(self, other: 'TimeTable') -> tuple[int, int]:
+        width = min(self.width, other.width)
+        height = min(self.height, other.height)
+        return width, height
 
 
 class TextProcessor:
