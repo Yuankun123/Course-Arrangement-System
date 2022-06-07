@@ -1,4 +1,5 @@
 class TimeTable:
+    # TODO: create horizontal iterator and vertical iterator
     _all_t: tuple
 
     class Time:
