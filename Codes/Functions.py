@@ -1020,6 +1020,7 @@ class CourseSystem:
         self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
         self.timeList = ['08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40']
         Session.i = 0
+        print(name, Session.i)
 
         self.na = name
         self.sch = sch
@@ -1039,6 +1040,7 @@ class CourseSystem:
         return self.sns[sni]
 
     def read_mo_info(self, key=TextProcessor.remove_end_blank):
+        Session.i = 0
         with open(self.info_path, 'r', encoding="gbk") as f:
             csv_reader = csv.reader(f)
             for line in csv_reader:
