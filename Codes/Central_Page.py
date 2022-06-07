@@ -3,6 +3,7 @@ from ttkbootstrap import *
 from tkinter import filedialog, simpledialog, messagebox
 import threading
 from Functions import *
+from Translator import *
 colorList = ['sky blue', 'aquamarine', 'light goldenrod', 'bisque', 'rosy brown', 'orange', '#B9CFAD', '#FCAE1E',
              '#59788E']
 tr = Translator(0)  # default English translator

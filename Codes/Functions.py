@@ -55,7 +55,6 @@ Contractions:
 import csv
 import copy
 from Tool import *
-from Translator import *
 from tqdm import tqdm
 import pickle
 # Empty Form: a two dimensional form, each grid (except headers) contains a list of course entries.
