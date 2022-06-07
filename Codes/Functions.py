@@ -809,8 +809,64 @@ class CompoundModule:
         return True
 
 
-class CourseTable(TimeTable):
+class Shadow(TimeTable):
+    """to specify the unavailable instructors on each time."""
     class Time(TimeTable.Time):
+        i = 0
+
+        def __init__(self, table: 'Shadow'):
+            super(Shadow.Time, self).__init__(table)
+            self.insts: list[Instructor] = []
+
+    def __init__(self, width, height, unavail_dict: dict[Instructor, list[tuple[int, int]]] = None):
+        super(Shadow, self).__init__(width, height)
+        if unavail_dict is not None:
+            for inst, unavail_ts in unavail_dict.items():
+                for day, row in unavail_ts:
+                    self[day, row].insts.append(inst)
+
+    def merge(self, another_shadow: 'Shadow'):
+        for day in range(self.height):
+            for row in range(self.width):
+                if another_shadow[day, row] is not None:
+                    self[day, row].insts.extend(another_shadow[day, row].insts)
+                    self[day, row].insts = list(set(self[day, row].insts))
+
+    def inspect(self) -> list[tuple['CourseTable.Time', list[Instructor]]]:
+        """inspect internal conflicts"""
+        res = []
+        for t in self:
+            if find_repeat_items(t.insts):
+                res.append((t, find_repeat_items(t.insts)))
+        return res
+
+    def _shadow_inspect(self, shd: 'Shadow') -> list[tuple['CourseTable.Time', list[Instructor]]]:
+        """inspect conflicts with a shadow"""
+        res = []
+        for day in range(self.width):
+            for row in range(self.height):
+                conflicts = find_repeat_items(list(set(self[day, row].insts)) + list(set(shd[day, row].insts)))
+                if conflicts:
+                    res.append((self[day, row], conflicts))
+        return res
+
+    def display(self):
+        res = ''
+        for day in range(self.width):
+            for row in range(self.height):
+                res += f'{day}, {row}, {self[day, row].insts}\n'
+        print(res)
+        return res
+
+
+class CourseTable(Shadow):
+
+    class Time(TimeTable.Time):
+        """
+        Each instance of this kind of 'Time':
+        Directly stores the reference of the period (may be compound) bound to it.
+        Has an immutable property that indicates the instructors having class on this time.
+        """
         i = 0
 
         def __init__(self, table: 'CourseTable'):
@@ -849,17 +905,6 @@ class CourseTable(TimeTable):
         for i in range(self.cs.periods_per_day * len(self.cs.days)):
             reversed_i = i % len(self.cs.days) * self.cs.periods_per_day + i // len(self.cs.days)
             self.avail_t.append(self[reversed_i])
-
-    @property
-    def shadow(self):
-        unavail_dict = {}
-        for t in self:
-            for inst in t.insts:
-                if inst in unavail_dict.keys():
-                    unavail_dict[inst].append(t)
-                else:
-                    unavail_dict[inst] = [t]
-        return Shadow(len(self.cs.days), self.cs.periods_per_day, unavail_dict)
 
     def __repr__(self):
         res = 'CourseTable:\n'
@@ -916,107 +961,64 @@ class CourseTable(TimeTable):
             return True
         return False
 
-    def switch_two_time_slots(self, ti1, ti2):
-        t1 = self[ti1]
-        t2 = self[ti2]
-        temp_pd = t2.pd
-        if t1.pd is not None:
-            t1.pd.t = t2  # associate t2 to pd1
+    def switch_two_time_slots(self, ti1=-1, ti2=-1, t1=None, t2=None):
+        _t1 = self[ti1]
+        _t2 = self[ti2]
+
+        # overwrite
+        if t1 is not None:
+            _t1 = t1
+        if t1 is not None:
+            _t2 = t2
+
+        temp_pd = _t2.pd
+        if _t1.pd is not None:
+            _t1.pd.t = _t2  # associate t2 to pd1
         else:
-            t2.pd = None  # associate t2 to None
+            _t2.pd = None  # associate t2 to None
         if temp_pd is not None:
-            temp_pd.t = t1  # associate t1 to pd2
+            temp_pd.t = _t1  # associate t1 to pd2
         else:
-            t1.pd = None  # associate t1 to None
-
-    def inspect(self) -> list[tuple['CourseTable.Time', list[Instructor]]]:
-        res = []
-        for t in self:
-            if find_repeat_items(t.insts):
-                res.append((t, find_repeat_items(t.insts)))
-        return res
-
-    def _shadow_inspect(self, shd: 'Shadow') -> list[tuple['CourseTable.Time', list[Instructor]]]:
-        """inspect conflicts with a shadow"""
-        res = []
-        for day in range(self.width):
-            for row in range(self.height):
-                conflicts = find_repeat_items(list(set(self[day, row].insts)) + list(set(shd[day, row].unavail_insts)))
-                if conflicts:
-                    res.append((self[day, row], conflicts))
-        return res
+            _t1.pd = None  # associate t1 to None
 
     def cross_inspect(self) -> list[tuple[list[tuple['CourseTable.Time', list[Instructor]]], 'CourseSystem']]:
         course_tables = self.cs.sch.get_other_cts(self)
         res = []
         assert self not in course_tables
         for ct in course_tables:
-            temp = self._shadow_inspect(ct.shadow)
+            temp = self._shadow_inspect(ct)
             if temp:
                 res.append((temp, ct.cs))
         return res
 
     def _shadow_adjust(self, shd: 'Shadow'):
-        print('len', len(self))
-        for ti in range(len(self)):
+        """
+        This function rearranges time slots to avoid conflicts with a given shadow.
+        The easiest way to achieve this is by switching time slots holding periods of
+        different groups. Since the modules (and thus the groups) are assigned to time slots horizontally,
+        in this function we switch time slots vertically.
+        """
+        for i, t in enumerate(self):
             temp = 1
             try:
-                while isoverlapped(self[ti].insts, shd[ti].unavail_insts):
-                    self.switch_two_time_slots(ti, ti + temp)
+                while isoverlapped(t.insts, shd[t.day, t.row].insts):
+                    self.switch_two_time_slots(i, i + temp)
                     temp += 1
             except IndexError:
-                print('len', len(shd))
-                print(ti)
+                print('Unable to cross-adjust')
 
     def cross_adjust(self):
-        """adjust according to other cs' shadows and the shadow of the school"""
+        """adjust according to other cs and the shadow of the school"""
         merged_shadow = self.cs.sch.shadow
         for ct in self.cs.sch.get_other_cts(self):
-            merged_shadow.merge(ct.shadow)
-
+            merged_shadow.merge(ct)
         self._shadow_adjust(merged_shadow)
-
-
-class Shadow(TimeTable):
-    """to specify the unavailable instructors on each time."""
-    class Time(TimeTable.Time):
-        i = 0
-
-        def __init__(self, table: 'Shadow'):
-            super(Shadow.Time, self).__init__(table)
-            self.unavail_insts: list[Instructor] = []
-
-    def __init__(self, width, height, unavail_dict: dict[Instructor, list[CourseTable.Time]] = None):
-        super(Shadow, self).__init__(width, height)
-        if unavail_dict is None:
-            self.unavail_dict = {}
-        else:
-            self.unavail_dict = unavail_dict
-        self.update()
-
-    def update(self):
-        for inst, unavail_ts in self.unavail_dict.items():
-            for t in unavail_ts:
-                self[t.day, t.row].unavail_insts.append(inst)
-
-    def merge(self, another_shadow: 'Shadow'):
-        for i in range(len(self)):
-            self[i].unavail_insts.extend(another_shadow[i].unavail_insts)
-            self[i].unavail_insts = list(set(self[i].unavail_insts))
-
-    def display(self):
-        res = ''
-        for day in range(self.width):
-            for row in range(self.height):
-                res += f'{day}, {row}, {self[day, row].unavail_insts}\n'
-        print(res)
-        return res
 
 
 class CourseSystem:
     def __init__(self, name, sch: 'School'):
         self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
-        self.timeList = ['08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40', '15:50 - 16:50']
+        self.timeList = ['08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40']
         Session.i = 0
 
         self.na = name
