@@ -320,27 +320,31 @@ class CentralPage(Frame):
         self.courseSystemOperateFrame = Frame(self.courseSystemFrame)
         self.courseSystemOperateFrame.place(x=0, y=0)
 
-        self.createCs_b = Button(self.courseSystemOperateFrame, text=tr.add, command=self.create_cs)
-        self.createCs_b.grid(column=0, row=1, sticky='w')
+        create_cs_b = Button(self.courseSystemOperateFrame, text=tr.add, command=self.create_cs)
+        create_cs_b.grid(column=0, row=1, sticky='w')
 
-        self.importCs_b = Button(self.courseSystemOperateFrame, text=tr.import_from_draft, command=self.import_cs)
-        self.importCs_b.grid(column=0, row=0, columnspan=2)
-
-        self.csInfoFrames: list[CSInfoFrame] = []
+        import_cs_b = Button(self.courseSystemOperateFrame, text=tr.import_from_draft, command=self.import_cs)
+        import_cs_b.grid(column=0, row=0, columnspan=2)
 
         about_info = Text(self, autostyle=False, height=4, width=29, font=('Times New Roman', 12), relief='flat')
         about_info.insert('end', tr.about)
         about_info.place(x=460, y=40)
         about_info.configure(state='disabled')
 
+        # ask for school name
         name = simpledialog.askstring(title=tr.welcome,
-                                      prompt=tr.ask_school)
+                                      prompt=tr.ask_school,
+                                      parent=self.master)
+        self.master.lift()  # keep the window on the top
+
         if not name:
             name = tr.anonymous_school
         school_name = Label(self, text='For ' + name, style='3.TLabel')
         school_name.place(x=0, y=40, height=20, width=450)
         self.sch = School(name)
-        self.master.lift()
+
+        # CourseSystem info frames
+        self.csInfoFrames: list[CSInfoFrame] = []
 
     def create_cs(self):
         new_cs_name = simpledialog.askstring(title=tr.new_course_system,
