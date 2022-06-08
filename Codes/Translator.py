@@ -77,6 +77,7 @@ class Translator:
         return super().__getattribute__(item)[self.lan]
 
 
+TR = Translator(0)
 if __name__ == '__main__':
     class _Client:  # hide code
         tr1 = Translator(0)  # English translator
