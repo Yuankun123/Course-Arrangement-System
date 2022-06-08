@@ -53,7 +53,8 @@ class CentralPage(Frame):
 
     def create_cs(self):
         new_cs_name = simpledialog.askstring(title=TR.new_course_system,
-                                             prompt=TR.ask_cs_name)
+                                             prompt=TR.ask_cs_name,
+                                             parent=self.master)
         if new_cs_name:
             # check if exist...
 
