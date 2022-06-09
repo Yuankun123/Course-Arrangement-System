@@ -138,7 +138,7 @@ class CSInfoFrame(LabelFrame):
             text_array.append(column)
 
         # display functions for buttons
-        def get_color(t: 'CourseTable.Time') -> str:
+        def get_color(t: 'CourseSystem.Time') -> str:
             if t.pd is None:  # empty time
                 return self.color_list[-1]
             else:
@@ -177,9 +177,9 @@ class CSInfoFrame(LabelFrame):
                         e_in.tag_add('slot_No', '1.0', '1.1')
                         e_in.tag_configure('slot_No', foreground='red')
 
-                        e_in.configure(bg=get_color(self.cs.courseTable[j_in - 1, i_in - 1]))
+                        e_in.configure(bg=get_color(self.cs[j_in - 1, i_in - 1]))
 
-                        for lsni, lsn in enumerate(self.cs.courseTable[j_in - 1, i_in - 1].lsns):
+                        for lsni, lsn in enumerate(self.cs[j_in - 1, i_in - 1].lsns):
                             if lsn.sn.i >= 10:
                                 index_for_display = str(lsn.sn.i)
                             else:
@@ -199,7 +199,7 @@ class CSInfoFrame(LabelFrame):
             index1 = 'ABCDEFGHIJKLMNOPQRSTUVWXY'.find(tg1)
             index2 = 'ABCDEFGHIJKLMNOPQRSTUVWXY'.find(tg2)
 
-            self.cs.courseTable.switch_two_time_slots(index1, index2)
+            self.cs.switch_two_time_slots(index1, index2)
 
             clear_text_array()
             insert_form()
@@ -208,7 +208,7 @@ class CSInfoFrame(LabelFrame):
             sni1 = int(switch_n_entry1.get())
             sni2 = int(switch_n_entry2.get())
 
-            if not self.cs.courseTable.switch_two_sns(sni1, sni2):
+            if not self.cs.switch_two_sns(sni1, sni2):
                 messagebox.showwarning(TR.warning, message=TR.cannot_switch)
 
             clear_text_array()
@@ -232,7 +232,7 @@ class CSInfoFrame(LabelFrame):
                     print("The file is being operated by another APP")
 
         def inspect_conflict():
-            conflicts = self.cs.courseTable.inspect()
+            conflicts = self.cs.inspect()
             if not conflicts:
                 message = TR.no_conflict
             else:
@@ -242,7 +242,7 @@ class CSInfoFrame(LabelFrame):
             messagebox.showinfo(TR.conflicts, message, parent=root)
 
         def cross_inspect():
-            all_conflicts = self.cs.courseTable.cross_inspect()
+            all_conflicts = self.cs.cross_inspect()
             if not all_conflicts:
                 message = TR.no_conflict
             else:
@@ -254,7 +254,7 @@ class CSInfoFrame(LabelFrame):
             messagebox.showinfo(TR.conflicts, message, parent=root)
 
         def cross_adjust():
-            self.cs.courseTable.cross_adjust()
+            self.cs.cross_adjust()
             clear_text_array()
             insert_form()
 

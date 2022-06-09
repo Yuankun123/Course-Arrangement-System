@@ -67,7 +67,7 @@ class Instructor:
         self.sns: list[Session] = []
 
     @property
-    def ts(self) -> list['CourseTable.Time']:
+    def ts(self) -> list['CourseSystem.Time']:
         res = []
         for sn in self.sns:
             res.extend(sn.ts)
@@ -126,7 +126,7 @@ class Session:
         gp.sns.append(self)
 
     @property
-    def ts(self) -> list['CourseTable.Time'] | str:
+    def ts(self) -> list['CourseSystem.Time'] | str:
         if self.gp is None:
             return 'Group Unarranged'
         if self.gp.pds[0].t is None:
@@ -578,7 +578,7 @@ class Period:
     def __init__(self, group: 'Group', pdi: int):
         self.gp = group
         self.pdi = pdi
-        self._t: CourseTable.Time | None = None
+        self._t: CourseSystem.Time | None = None
         self.master: CompoundPeriod | None = None
 
     @property
@@ -588,7 +588,7 @@ class Period:
         return self.master.t
 
     @t.setter
-    def t(self, new_t: 'CourseTable.Time'):
+    def t(self, new_t: 'CourseSystem.Time'):
         if self.master is None:
             self._t = new_t
             if new_t is not None:
@@ -619,7 +619,7 @@ class Group:
         self.master: CompoundGroup | None = None  # may be mastered by a compound group
 
     @property
-    def ts(self) -> list['CourseTable.Time']:
+    def ts(self) -> list['CourseSystem.Time']:
         res = [pd.t for pd in self.pds]
         return res
 
@@ -652,7 +652,7 @@ class CompoundPeriod:
         self.pdi = pdi
 
         self.subpds: list[Period] = []
-        self._t: CourseTable.Time | None = None
+        self._t: CourseSystem.Time | None = None
 
         self.slave_subpd(parent_pd)
 
@@ -661,7 +661,7 @@ class CompoundPeriod:
         return self._t
 
     @t.setter
-    def t(self, new_t: 'CourseTable.Time'):
+    def t(self, new_t: 'CourseSystem.Time'):
         self._t = new_t
         new_t.pd = self
 
@@ -704,7 +704,7 @@ class CompoundGroup:
         return len(self.subgps) + len(self.new_subgps)
 
     @property
-    def ts(self) -> list['CourseTable.Time']:
+    def ts(self) -> list['CourseSystem.Time']:
         res = [cmpd_pd.t for cmpd_pd in self.cmpd_pds]
         assert len(res) == len(set(res))
         return res
@@ -831,7 +831,7 @@ class Shadow(TimeTable):
                     self[day, row].insts.extend(another_shadow[day, row].insts)
                     self[day, row].insts = list(set(self[day, row].insts))
 
-    def inspect(self) -> list[tuple['CourseTable.Time', list[Instructor]]]:
+    def inspect(self) -> list[tuple['CourseSystem.Time', list[Instructor]]]:
         """inspect internal conflicts"""
         res = []
         for t in self:
@@ -839,7 +839,7 @@ class Shadow(TimeTable):
                 res.append((t, find_repeat_items(t.insts)))
         return res
 
-    def _shadow_inspect(self, shd: 'Shadow') -> list[tuple['CourseTable.Time', list[Instructor]]]:
+    def _shadow_inspect(self, shd: 'Shadow') -> list[tuple['CourseSystem.Time', list[Instructor]]]:
         """inspect conflicts with a shadow"""
         res = []
         for day in range(self.width):
@@ -858,8 +858,7 @@ class Shadow(TimeTable):
         return res
 
 
-class CourseTable(Shadow):
-
+class CourseSystem(Shadow):
     class Time(TimeTable.Time):
         """
         Each instance of this kind of 'Time':
@@ -868,9 +867,9 @@ class CourseTable(Shadow):
         """
         i = 0
 
-        def __init__(self, table: 'CourseTable'):
-            assert isinstance(table, CourseTable)
-            super(CourseTable.Time, self).__init__(table)
+        def __init__(self, table: 'CourseSystem'):
+            assert isinstance(table, CourseSystem)
+            super(CourseSystem.Time, self).__init__(table)
             self.pd: Period | CompoundPeriod | None = None
 
         @property
@@ -894,22 +893,60 @@ class CourseTable(Shadow):
         def __repr__(self):
             return f'{self.tb.days[self.day]} T#{self.row}'
 
-    def __init__(self, cs: 'CourseSystem'):
-        super(CourseTable, self).__init__(len(cs.days), cs.periods_per_day)
-        self.cs = cs
-        self.days = self.cs.days
+    def __init__(self, name, sch: 'School'):
+        self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+        self.timeList = ['08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40']
+        Session.i = 0
+
+        super(CourseSystem, self).__init__(len(self.days), self.periods_per_day)
+
+        self.na = name
+        self.sch = sch
+        self.info_path = 'Unassigned'
+        self.state = 'Unassigned'
+
+        self.mos: list[Module] = []  # a list of all simple modules, elective or required
         self.top_mos: list[CompoundModule | EModule] = []
 
-        self.avail_t: list[CourseTable.Time] = []
-        for i in range(self.cs.periods_per_day * len(self.cs.days)):
-            reversed_i = i % len(self.cs.days) * self.cs.periods_per_day + i // len(self.cs.days)
+        self.sns: list[Session] = []  # for session searching
+
+        self.avail_t: list[CourseSystem.Time] = []
+        for i in range(self.periods_per_day * len(self.days)):
+            reversed_i = i % len(self.days) * self.periods_per_day + i // len(self.days)
             self.avail_t.append(self[reversed_i])
 
-    def __repr__(self):
-        res = 'CourseTable:\n'
-        for t in self:
-            res += t.display() + '\n'
-        return res
+    @property
+    def periods_per_day(self):
+        return len(self.timeList)
+
+    def read_mo_info(self, key=TextProcessor.remove_end_blank):
+        """read module info from self.path. The construction of modules involve reading course info
+        from the same file. So, after this function is executed, the structure constituted by CourseSystem,
+        Modules, Courses, Sessions, Lessons and Instructors is constructed"""
+
+        Session.i = 0  # reset session indexing
+        with open(self.info_path, 'r', encoding="gbk") as f:
+            csv_reader = csv.reader(f)
+            for line in csv_reader:
+                if line[0] == '/*':
+                    continue
+                elif line[0] == 'Module*':
+                    self.mos.append(EModule(name=key(line[1]),
+                                            select_num=int(line[2]),
+                                            frequency=int(line[3]),
+                                            cs=self))
+                    self.mos[-1].load_crs()
+                    self.mos[-1].arrange_gps()
+
+        self.mos.append(RModule(self))
+        self.mos[-1].load_crs()
+        self.mos[-1].arrange_gps()
+
+    def arrange_crs(self):
+        for mo in self.mos:
+            mo.arrange_crs()
+        self.load_e_modules()
+        self.load_r_module()
 
     def _add_time_for_module(self, mo: CompoundModule | Module):
         for gp in mo.gps:
@@ -917,44 +954,44 @@ class CourseTable(Shadow):
         self.top_mos.append(mo)
 
     def load_e_modules(self):
-        mos = [mo for mo in self.cs.mos if isinstance(mo, EModule)]
+        emos = [mo for mo in self.mos if isinstance(mo, EModule)]
 
-        loose_mo_stack = []
-        for mo in mos:
-            if mo.lei_gpn == 0:  # compact situation
-                self._add_time_for_module(mo)
+        loose_emo_stack = []
+        for emo in emos:
+            if emo.lei_gpn == 0:  # compact situation
+                self._add_time_for_module(emo)
             else:  # loose situation
-                loose_mo_stack.append(mo)
-        if len(loose_mo_stack) == 0:
+                loose_emo_stack.append(emo)
+        if len(loose_emo_stack) == 0:
             return
 
-        cmpd_mos = []
-        loose_mo_stack.sort(key=lambda x: x.fr, reverse=True)
-        while len(loose_mo_stack) > 0:
-            parent = loose_mo_stack.pop(0)
-            cmpd_mo = CompoundModule(parent)
-            cmpd_mos.append(cmpd_mo)
+        cmpd_emos = []
+        loose_emo_stack.sort(key=lambda x: x.fr, reverse=True)
+        while len(loose_emo_stack) > 0:
+            parent = loose_emo_stack.pop(0)
+            cmpd_emo = CompoundModule(parent)
+            cmpd_emos.append(cmpd_emo)
 
-            loose_mo_stack.sort(key=lambda x: x.gpn)
-            moi = len(loose_mo_stack) - 1
+            loose_emo_stack.sort(key=lambda x: x.gpn)  # modules with more groups take higher priority
+            moi = len(loose_emo_stack) - 1
             while moi >= 0:
-                if cmpd_mo.try_add_module(loose_mo_stack[moi]):
-                    print(loose_mo_stack[moi].na)
-                    loose_mo_stack.pop(moi)
+                if cmpd_emo.try_add_module(loose_emo_stack[moi]):
+                    print(loose_emo_stack[moi].na)
+                    loose_emo_stack.pop(moi)
                 moi -= 1
-            loose_mo_stack.sort(key=lambda x: x.fr, reverse=True)
+            loose_emo_stack.sort(key=lambda x: x.fr, reverse=True)
 
-        for cmpd_mo in cmpd_mos:
-            self._add_time_for_module(cmpd_mo)
+        for cmpd_emo in cmpd_emos:
+            self._add_time_for_module(cmpd_emo)
 
     def load_r_module(self):
-        for mo in self.cs.mos:
+        for mo in self.mos:
             if isinstance(mo, RModule):
                 self._add_time_for_module(mo)
 
     def switch_two_sns(self, sni1, sni2):
-        sn1 = self.cs.sns[sni1]
-        sn2 = self.cs.sns[sni2]
+        sn1 = self.sns[sni1]
+        sn2 = self.sns[sni2]
         if sn1.cr.mo == sn2.cr.mo:
             EModule.switch_two_sns(sn1, sn2)
             return True
@@ -980,14 +1017,14 @@ class CourseTable(Shadow):
         else:
             _t1.pd = None  # associate t1 to None
 
-    def cross_inspect(self) -> list[tuple[list[tuple['CourseTable.Time', list[Instructor]]], 'CourseSystem']]:
-        course_tables = self.cs.sch.get_other_cts(self)
+    def cross_inspect(self) -> list[tuple[list[tuple['CourseSystem.Time', list[Instructor]]], 'CourseSystem']]:
+        course_systems = self.sch.get_other_css(self)
         res = []
-        assert self not in course_tables
-        for ct in course_tables:
-            temp = self._shadow_inspect(ct)
+        assert self not in course_systems
+        for cs in course_systems:
+            temp = self._shadow_inspect(cs)
             if temp:
-                res.append((temp, ct.cs))
+                res.append((temp, cs))
         return res
 
     def _shadow_adjust(self, shd: 'Shadow'):
@@ -1008,60 +1045,10 @@ class CourseTable(Shadow):
 
     def cross_adjust(self):
         """adjust according to other cs and the shadow of the school"""
-        merged_shadow = self.cs.sch.shadow
-        for ct in self.cs.sch.get_other_cts(self):
-            merged_shadow.merge(ct)
+        merged_shadow = self.sch.shadow
+        for cs in self.sch.get_other_css(self):
+            merged_shadow.merge(cs)
         self._shadow_adjust(merged_shadow)
-
-
-class CourseSystem:
-    def __init__(self, name, sch: 'School'):
-        self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
-        self.timeList = ['08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40']
-        Session.i = 0
-        print(name, Session.i)
-
-        self.na = name
-        self.sch = sch
-        self.info_path = 'Unassigned'
-        self.state = 'Unassigned'
-
-        self.mos: list[Module] = []
-
-        self.courseTable = CourseTable(self)
-        self.sns: list[Session] = []  # for session searching
-
-    @property
-    def periods_per_day(self):
-        return len(self.timeList)
-
-    def search_sn(self, sni):
-        return self.sns[sni]
-
-    def read_mo_info(self, key=TextProcessor.remove_end_blank):
-        Session.i = 0
-        with open(self.info_path, 'r', encoding="gbk") as f:
-            csv_reader = csv.reader(f)
-            for line in csv_reader:
-                if line[0] == '/*':
-                    continue
-                elif line[0] == 'Module*':
-                    self.mos.append(EModule(name=key(line[1]),
-                                            select_num=int(line[2]),
-                                            frequency=int(line[3]),
-                                            cs=self))
-                    self.mos[-1].load_crs()
-                    self.mos[-1].arrange_gps()
-
-        self.mos.append(RModule(self))
-        self.mos[-1].load_crs()
-        self.mos[-1].arrange_gps()
-
-    def arrange_crs(self):
-        for emo in self.mos:
-            emo.arrange_crs()
-        self.courseTable.load_e_modules()
-        self.courseTable.load_r_module()
 
     def __repr__(self):
         res = ''
@@ -1088,7 +1075,7 @@ class CourseSystem:
         for day in range(len(self.days)):
             for row in range(self.periods_per_day):
                 temp = ''
-                for lsn in self.courseTable[day, row].lsns:
+                for lsn in self[day, row].lsns:
                     temp += lsn.sn.na + '\n'
                 reversed_form[row + 1][day + 1] = temp
 
@@ -1119,11 +1106,11 @@ class School:
                 self.csDict[cs.na] = cs
             return cs
 
-    def get_other_cts(self, ct: CourseTable) -> list[CourseTable]:
+    def get_other_css(self, cntr_cs: CourseSystem) -> list[CourseSystem]:
         res = []
         for cs in self.csDict.values():
-            if cs is not ct.cs:
-                res.append(cs.courseTable)
+            if cs is not cntr_cs:
+                res.append(cs)
         return res
 
 
@@ -1140,4 +1127,4 @@ if __name__ == '__main__':
     Gr2.read_mo_info()
     Gr2.arrange_crs()
 
-    Gr2.courseTable.cross_adjust()
+    Gr2.cross_adjust()
