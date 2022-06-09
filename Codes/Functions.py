@@ -1018,7 +1018,7 @@ class CourseSystem(Shadow):
             _t1.pd = None  # associate t1 to None
 
     def cross_inspect(self) -> list[tuple[list[tuple['CourseSystem.Time', list[Instructor]]], 'CourseSystem']]:
-        course_systems = self.sch.get_other_css(self)
+        course_systems = self.sch.get_other_cs(self)
         res = []
         assert self not in course_systems
         for cs in course_systems:
@@ -1046,7 +1046,7 @@ class CourseSystem(Shadow):
     def cross_adjust(self):
         """adjust according to other cs and the shadow of the school"""
         merged_shadow = self.sch.shadow
-        for cs in self.sch.get_other_css(self):
+        for cs in self.sch.get_other_cs(self):
             merged_shadow.merge(cs)
         self._shadow_adjust(merged_shadow)
 
@@ -1106,7 +1106,7 @@ class School:
                 self.csDict[cs.na] = cs
             return cs
 
-    def get_other_css(self, cntr_cs: CourseSystem) -> list[CourseSystem]:
+    def get_other_cs(self, cntr_cs: CourseSystem) -> list[CourseSystem]:
         res = []
         for cs in self.csDict.values():
             if cs is not cntr_cs:
