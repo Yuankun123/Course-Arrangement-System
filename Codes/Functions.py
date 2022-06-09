@@ -884,21 +884,26 @@ class CourseSystem(Shadow):
 
         def display(self) -> str:
             if self.pd is None:
-                return f'T{self.vtc_i}, {self.tb.days[self.day]} P #{self.row}. Empty'
-            res = f'T{self.vtc_i}, {self.tb.days[self.day]} P #{self.row}. Lessons:\n'
+                return f'T{self.vtc_i}, Day{self.day} P #{self.row}. Empty'
+            res = f'T{self.vtc_i}, Day{self.day} P #{self.row}. Lessons:\n'
             for lsn in self.lsns:
                 res += f'{INDENT * 3}{repr(lsn.sn)}\n'
             return res
 
         def __repr__(self):
-            return f'{self.tb.days[self.day]} T#{self.row}'
+            return f'Day{self.day} T#{self.row}'
 
     def __init__(self, name, sch: 'School'):
+        # TODO: self.days, self.timeList, self.state, and self.infopath should not be in this file
+        # So should self.serialize, self.deserialize, self.save_as_csv.
+        # We should more them to CourseSystemGUI.py and build a courseSystem class and School class
+        # that inherit the two class in this file.
+
         self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
         self.timeList = ['08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40']
         Session.i = 0
 
-        super(CourseSystem, self).__init__(len(self.days), self.periods_per_day)
+        super(CourseSystem, self).__init__(self.dayn, self.pdn_per_day)
 
         self.na = name
         self.sch = sch
@@ -911,13 +916,17 @@ class CourseSystem(Shadow):
         self.sns: list[Session] = []  # for session searching
 
         self.avail_t: list[CourseSystem.Time] = []
-        for i in range(self.periods_per_day * len(self.days)):
-            reversed_i = i % len(self.days) * self.periods_per_day + i // len(self.days)
+        for i in range(self.pdn_per_day * self.dayn):
+            reversed_i = i % self.dayn * self.pdn_per_day + i // self.dayn
             self.avail_t.append(self[reversed_i])
 
     @property
-    def periods_per_day(self):
+    def pdn_per_day(self):
         return len(self.timeList)
+
+    @property
+    def dayn(self):
+        return len(self.days)
 
     def read_mo_info(self, key=TextProcessor.remove_end_blank):
         """read module info from self.path. The construction of modules involve reading course info
@@ -1069,11 +1078,11 @@ class CourseSystem(Shadow):
 
     def save_as_csv(self, saving_path):
         reversed_form = [['Time'] + self.days]
-        rows = [[self.timeList[i]] + ['']*len(self.days) for i in range(self.periods_per_day)]
+        rows = [[self.timeList[i]] + [''] * self.dayn for i in range(self.pdn_per_day)]
         reversed_form.extend(rows)
 
-        for day in range(len(self.days)):
-            for row in range(self.periods_per_day):
+        for day in range(self.dayn):
+            for row in range(self.pdn_per_day):
                 temp = ''
                 for lsn in self[day, row].lsns:
                     temp += lsn.sn.na + '\n'

@@ -122,9 +122,9 @@ class CSInfoFrame(LabelFrame):
 
         # Create empty text array
         text_array = []
-        for j in range(len(self.cs.days) + 1):
+        for j in range(self.cs.dayn + 1):
             column = []
-            for i in range(self.cs.periods_per_day + 1):
+            for i in range(self.cs.pdn_per_day + 1):
                 e = Text(root,
                          autostyle=False,
                          wrap='word',
@@ -172,7 +172,7 @@ class CSInfoFrame(LabelFrame):
                 for i_in, e_in in enumerate(column_in):
 
                     if i_in > 0 and j_in > 0:
-                        e_in.insert('end', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[(j_in - 1) * self.cs.periods_per_day +
+                        e_in.insert('end', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[(j_in - 1) * self.cs.pdn_per_day +
                                                                         (i_in - 1)] + '\n')
                         e_in.tag_add('slot_No', '1.0', '1.1')
                         e_in.tag_configure('slot_No', foreground='red')
