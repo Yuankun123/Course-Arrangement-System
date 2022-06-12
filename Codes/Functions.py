@@ -56,8 +56,6 @@ import csv
 import copy
 from Tool import *
 from tqdm import tqdm
-import pickle
-# Empty Form: a two dimensional form, each grid (except headers) contains a list of course entries.
 INDENT = ' '*4
 
 
@@ -210,7 +208,7 @@ class Module:
     def sns(self) -> list[Session]:
         return sum([cr.sns for cr in self.crs], [])
 
-    def load_crs(self, key=TextProcessor.remove_end_blank):
+    def load_crs(self, info_path,  key=TextProcessor.remove_end_blank):
         """
         add all courses of this module to self.crs;
         add instructors to self.gr.insts_dict and self.insts
@@ -256,8 +254,8 @@ class EModule(Module):
     def gpn(self) -> int:
         return len(self.gps)
 
-    def load_crs(self, key=TextProcessor.remove_end_blank):
-        with open(self.cs.info_path, 'r', encoding="gbk") as f:
+    def load_crs(self, info_path, key=TextProcessor.remove_end_blank):
+        with open(info_path, 'r', encoding="gbk") as f:
             csv_reader = csv.reader(f)
             for line in csv_reader:
                 if key(line[0]) == 'Course*' and key(line[2]) == self.na:
@@ -299,7 +297,7 @@ class EModule(Module):
 
         for i in range(gpn):
             self.gps.append(
-                Group(self.fr, self, gp_capas[i])
+                Group(self.fr, self, gp_capas[i], i)
             )
 
     def arrange_crs_a(self):
@@ -506,7 +504,7 @@ class EModule(Module):
 
             for i in range(re_gpn):
                 self.gps.append(
-                    Group(self.fr, self, gp_capas[i])
+                    Group(self.fr, self, gp_capas[i], i)
                 )
 
             self.arrange_crs()
@@ -555,8 +553,8 @@ class RModule(Module):
             res += repr(cr) + '\n'
         return res
 
-    def load_crs(self, key=TextProcessor.remove_end_blank):
-        with open(self.cs.info_path, 'r', encoding="gbk") as f:
+    def load_crs(self, info_path, key=TextProcessor.remove_end_blank):
+        with open(info_path, 'r', encoding="gbk") as f:
             csv_reader = csv.reader(f)
             for line in csv_reader:
                 if key(line[0]) == 'RCourse*':
@@ -566,8 +564,8 @@ class RModule(Module):
                     )
 
     def arrange_gps(self):
-        for cr in self.crs:
-            self.gps.append(Group(cr.fr, self, 1))
+        for i, cr in enumerate(self.crs):
+            self.gps.append(Group(cr.fr, self, 1, i))
 
     def arrange_crs(self):
         for cri, cr in enumerate(self.crs):
@@ -609,7 +607,8 @@ class Period:
 
 
 class Group:
-    def __init__(self, span: int, module: Module, capacity: int):
+    def __init__(self, span: int, module: Module, capacity: int, gpi):
+        self.gpi = gpi
         self.span = span
         self.mo = module
         self.capa = capacity
@@ -640,9 +639,7 @@ class Group:
         return res
 
     def __repr__(self):
-        res = f'A Group with capacity {self.capa} having {self.span} Periods. On {self.ts}. Sessions:\n'
-        for sn in self.sns:
-            res += f'{INDENT*3}{sn.na}\n'
+        res = f'Group #{self.gpi} of {self.mo.na}'
         return res
 
 
@@ -893,26 +890,16 @@ class CourseSystem(Shadow):
         def __repr__(self):
             return f'Day{self.day} T#{self.row}'
 
-    def __init__(self, name, sch: 'School'):
-        # TODO: self.days, self.timeList, self.state, and self.infopath should not be in this file
-        # So should self.serialize, self.deserialize, self.save_as_csv.
-        # We should more them to CourseSystemGUI.py and build a courseSystem class and School class
-        # that inherit the two class in this file.
-
-        self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
-        self.timeList = ['08:00 - 09:30', '09:40 - 11:10', '12:30 - 14:00', '14:10 - 15:40']
-        Session.i = 0
-
+    def __init__(self, name, sch: 'School', dayn, pdn_per_day):
+        self.pdn_per_day = pdn_per_day
+        self.dayn = dayn
         super(CourseSystem, self).__init__(self.dayn, self.pdn_per_day)
 
         self.na = name
         self.sch = sch
-        self.info_path = 'Unassigned'
-        self.state = 'Unassigned'
 
         self.mos: list[Module] = []  # a list of all simple modules, elective or required
         self.top_mos: list[CompoundModule | EModule] = []
-
         self.sns: list[Session] = []  # for session searching
 
         self.avail_t: list[CourseSystem.Time] = []
@@ -920,21 +907,13 @@ class CourseSystem(Shadow):
             reversed_i = i % self.dayn * self.pdn_per_day + i // self.dayn
             self.avail_t.append(self[reversed_i])
 
-    @property
-    def pdn_per_day(self):
-        return len(self.timeList)
-
-    @property
-    def dayn(self):
-        return len(self.days)
-
-    def read_mo_info(self, key=TextProcessor.remove_end_blank):
+    def read_mo_info(self, info_path, key=TextProcessor.remove_end_blank):
         """read module info from self.path. The construction of modules involve reading course info
         from the same file. So, after this function is executed, the structure constituted by CourseSystem,
         Modules, Courses, Sessions, Lessons and Instructors is constructed"""
 
         Session.i = 0  # reset session indexing
-        with open(self.info_path, 'r', encoding="gbk") as f:
+        with open(info_path, 'r', encoding="gbk") as f:
             csv_reader = csv.reader(f)
             for line in csv_reader:
                 if line[0] == '/*':
@@ -944,11 +923,11 @@ class CourseSystem(Shadow):
                                             select_num=int(line[2]),
                                             frequency=int(line[3]),
                                             cs=self))
-                    self.mos[-1].load_crs()
+                    self.mos[-1].load_crs(info_path)
                     self.mos[-1].arrange_gps()
 
         self.mos.append(RModule(self))
-        self.mos[-1].load_crs()
+        self.mos[-1].load_crs(info_path)
         self.mos[-1].arrange_gps()
 
     def arrange_crs(self):
@@ -1006,15 +985,9 @@ class CourseSystem(Shadow):
             return True
         return False
 
-    def switch_two_time_slots(self, ti1=-1, ti2=-1, t1=None, t2=None):
+    def switch_two_time_slots(self, ti1=-1, ti2=-1):
         _t1 = self[ti1]
         _t2 = self[ti2]
-
-        # overwrite
-        if t1 is not None:
-            _t1 = t1
-        if t1 is not None:
-            _t2 = t2
 
         temp_pd = _t2.pd
         if _t1.pd is not None:
@@ -1043,14 +1016,12 @@ class CourseSystem(Shadow):
         different groups. Since the modules (and thus the groups) are assigned to time slots horizontally,
         in this function we switch time slots vertically.
         """
+        print(shd.width, shd.height)
         for i, t in enumerate(self):
             temp = 1
-            try:
-                while isoverlapped(t.insts, shd[t.day, t.row].insts):
-                    self.switch_two_time_slots(i, i + temp)
-                    temp += 1
-            except IndexError:
-                print('Unable to cross-adjust')
+            while isoverlapped(t.insts, shd[t.day, t.row].insts):
+                self.switch_two_time_slots(i, i + temp)
+                temp += 1
 
     def cross_adjust(self):
         """adjust according to other cs and the shadow of the school"""
@@ -1065,55 +1036,26 @@ class CourseSystem(Shadow):
             res += repr(mo) + '\n'
         return res + f'\n{"="*100}'*2
 
-    def serialize(self, saving_path):
-        with open(saving_path, 'wb') as f:
-            pickle.dump(self, f)
-
-    @classmethod
-    def deserialize(cls, open_path) -> 'CourseSystem':
-        with open(open_path, 'rb') as f:
-            res = pickle.load(f)
-            assert isinstance(res, cls)
-            return res
-
-    def save_as_csv(self, saving_path):
-        reversed_form = [['Time'] + self.days]
-        rows = [[self.timeList[i]] + [''] * self.dayn for i in range(self.pdn_per_day)]
-        reversed_form.extend(rows)
-
-        for day in range(self.dayn):
-            for row in range(self.pdn_per_day):
-                temp = ''
-                for lsn in self[day, row].lsns:
-                    temp += lsn.sn.na + '\n'
-                reversed_form[row + 1][day + 1] = temp
-
-        with open(saving_path, 'w', newline='') as courseArrangement:
-            writer = csv.writer(courseArrangement)
-            writer.writerows(reversed_form)
-
 
 class School:
-    def __init__(self, name):
+    def __init__(self, name, max_dayn, max_pdn_per_day):
         self.na = name
+        self.max_dayn = max_dayn
+        self.max_pdn_per_day = max_pdn_per_day
         self.instDict: dict[str, Instructor] = {}
         self.csDict: dict[str, CourseSystem] = {}
-        self.shadow = Shadow(5, 5)
+        self.shadow = Shadow(max_dayn, max_pdn_per_day)
 
     def add_inst(self, name) -> Instructor:
         if name not in self.instDict.keys():
             self.instDict[name] = Instructor(name)
         return self.instDict[name]
 
-    def add_cs(self, cs: str | CourseSystem):
-        if isinstance(cs, str):
-            if cs not in self.csDict.keys():
-                self.csDict[cs] = CourseSystem(cs, self)
-            return self.csDict[cs]
-        else:
-            if cs not in self.csDict.values():
-                self.csDict[cs.na] = cs
-            return cs
+    def add_cs(self, cs_na: str, dayn, pdn_per_day) -> CourseSystem:
+        assert dayn <= self.max_dayn and pdn_per_day <= self.max_pdn_per_day
+        if cs_na not in self.csDict.keys():
+            self.csDict[cs_na] = CourseSystem(cs_na, self, dayn, pdn_per_day)
+        return self.csDict[cs_na]
 
     def get_other_cs(self, cntr_cs: CourseSystem) -> list[CourseSystem]:
         res = []
@@ -1124,16 +1066,18 @@ class School:
 
 
 if __name__ == '__main__':
-    Sch = School('BHSFIC')
+    class _Client:
+        Sch = School('BHSFIC', 5, 5)
 
-    Gr1 = Sch.add_cs('Grade 11')
-    Gr1.info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\课程信息示例\\courseInfo v2.0.csv'
-    Gr1.read_mo_info()
-    Gr1.arrange_crs()
+        Gr1 = Sch.add_cs('Grade 11', 5, 5)
+        info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\课程信息示例\\courseInfo v2.0.csv'
+        Gr1.read_mo_info(info_path)
+        Gr1.arrange_crs()
 
-    Gr2 = Sch.add_cs('Grade 12')
-    Gr2.info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\课程信息示例\\courseInfo v2.0.csv'
-    Gr2.read_mo_info()
-    Gr2.arrange_crs()
+        Gr2 = Sch.add_cs('Grade 12', 5, 5)
+        Gr2.info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\课程信息示例\\courseInfo v2.0.csv'
+        Gr2.read_mo_info(info_path)
+        Gr2.arrange_crs()
 
-    Gr2.cross_adjust()
+        Gr2.cross_adjust()
+        assert not Gr2.cross_inspect()
