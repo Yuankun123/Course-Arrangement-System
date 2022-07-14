@@ -308,7 +308,7 @@ class CentralPage(Frame):
         self.create_sch_b = Button(self, text=TR.new_sch, command=self.create_sch)
         self.create_sch_b.place(x=7, y=70, width=140)
 
-        self.import_sch_b = Button(self, text=TR.import_sch, command=self.import_sch())
+        self.import_sch_b = Button(self, text=TR.import_sch, command=self.import_sch)
         self.import_sch_b.place(x=157, y=70, width=140)
 
         self.save_sch_b = Button(self, text=TR.save_sch, command=self.save_sch)

@@ -697,8 +697,8 @@ class CompoundGroup:
         return self.span - sum([subgp.span for subgp in self.new_subgps])
 
     @property
-    def subgpn(self):
-        return len(self.subgps) + len(self.new_subgps)
+    def sns_sum(self):
+        return sum([len(subgp.sns) for subgp in (self.subgps + self.new_subgps)])
 
     @property
     def ts(self) -> list['CourseSystem.Time']:
@@ -746,6 +746,7 @@ class CompoundGroup:
 class CompoundModule:
     """to overlap several modules in a course table"""
     def __init__(self, parent: EModule):
+        print('Parent:', parent)
         self.cmpd_gpn = parent.gpn
         self.fr = parent.fr
         self.ini_lei_gpn = parent.lei_gpn
@@ -758,13 +759,12 @@ class CompoundModule:
 
     @property
     def gps(self) -> list[CompoundGroup]:
-        # the compound group with the smallest number of subgroups comes first
-        return sorted(self._cmpd_gps, key=lambda x: x.subgpn)
+        # the compound group with the smallest number of sessions comes first
+        return sorted(self._cmpd_gps, key=lambda x: x.sns_sum)
 
     def try_add_module(self, new_submo: EModule) -> bool:
         # submodules cannot coexist without some groups overlap to the same compound group
         if new_submo.fr > self.lei_pdn:
-            print('a', new_submo)
             return False
 
         for submo in self.submos:
@@ -773,12 +773,10 @@ class CompoundModule:
                 if new_submo.try_regroup(submo.gpn):
                     pass
                 else:
-                    print('b', new_submo)
                     return False
             if submo.fr // new_submo.fr * submo.gpn < new_submo.gpn:
-                print([mo.na for mo in self.submos])
-                print('c', new_submo.gpn, submo.gpn)
                 return False
+        print('regrouped', [gp.sns for gp in new_submo.gps])
 
         used_cmpd_gp = set([])
         gps_copy = sorted(new_submo.gps, key=lambda x: x.capa, reverse=True)  # larger group first
@@ -790,13 +788,11 @@ class CompoundModule:
             else:
                 for cmpd_gp in self.gps:
                     cmpd_gp.cancel()
-                print('d', new_submo)
                 return False
 
         if len(used_cmpd_gp) < self.cmpd_gpn:  # haven't fill
             for cmpd_gp in self.gps:
                 cmpd_gp.cancel()
-            print('e', new_submo)
             return False
 
         for cmpd_gp in self.gps:
@@ -851,7 +847,6 @@ class Shadow(TimeTable):
         for day in range(self.width):
             for row in range(self.height):
                 res += f'{day}, {row}, {self[day, row].insts}\n'
-        print(res)
         return res
 
 
@@ -955,16 +950,17 @@ class CourseSystem(Shadow):
 
         cmpd_emos = []
         loose_emo_stack.sort(key=lambda x: x.fr, reverse=True)
+        print('fr sorted (reversed)', loose_emo_stack)
         while len(loose_emo_stack) > 0:
-            parent = loose_emo_stack.pop(0)
-            cmpd_emo = CompoundModule(parent)
+            parent = loose_emo_stack.pop(0)  # parent is the module with the largest fr
+            cmpd_emo = CompoundModule(parent)  # create compound module
             cmpd_emos.append(cmpd_emo)
 
             loose_emo_stack.sort(key=lambda x: x.gpn)  # modules with more groups take higher priority
+            print('gpn sorted', loose_emo_stack)
             moi = len(loose_emo_stack) - 1
             while moi >= 0:
                 if cmpd_emo.try_add_module(loose_emo_stack[moi]):
-                    print(loose_emo_stack[moi].na)
                     loose_emo_stack.pop(moi)
                 moi -= 1
             loose_emo_stack.sort(key=lambda x: x.fr, reverse=True)
@@ -1016,7 +1012,6 @@ class CourseSystem(Shadow):
         different groups. Since the modules (and thus the groups) are assigned to time slots horizontally,
         in this function we switch time slots vertically.
         """
-        print(shd.width, shd.height)
         for i, t in enumerate(self):
             temp = 1
             while isoverlapped(t.insts, shd[t.day, t.row].insts):
@@ -1070,14 +1065,7 @@ if __name__ == '__main__':
         Sch = School('BHSFIC', 5, 5)
 
         Gr1 = Sch.add_cs('Grade 11', 5, 5)
-        info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\课程信息示例\\courseInfo v2.0.csv'
+        info_path = 'C:\\Users\\Kunko\\Desktop\\12th(1).csv'
         Gr1.read_mo_info(info_path)
         Gr1.arrange_crs()
 
-        Gr2 = Sch.add_cs('Grade 12', 5, 5)
-        Gr2.info_path = 'C:\\Users\\Kunko\\Desktop\\ACAS\\课程信息示例\\courseInfo v2.0.csv'
-        Gr2.read_mo_info(info_path)
-        Gr2.arrange_crs()
-
-        Gr2.cross_adjust()
-        assert not Gr2.cross_inspect()
