@@ -9,18 +9,30 @@ class Translator:
              '邮箱：Kunko2005@hotmail.com']
     welcome = ['Welcome',
                '欢迎']
-    ask_school = ['Please indicate the name of your school',
-                  '请输入您的学校名称']
-    anonymous_school = ['Anonymous School',
-                        '未知学校']
     course_systems = ['Course Systems',
                       '课程系统']
     table_format = ['Table Format',
                     '课表格式']
-    add = ['Add...',
-           '添加...']
-    import_from_draft = ['Import From Draft',
-                         '从草稿导入']
+
+    ####################
+    ask_school = ['Please indicate the name of your school',
+                  '请输入您的学校名称']
+    anonymous_school = ['Anonymous School',
+                        '未知学校']
+    new_sch = ['New School',
+               ]
+    import_sch = ['Import From Draft',
+                  '从草稿导入']
+    save_sch = ['Save as Draft',
+                ]
+    close_sch = ['Discharge',
+                ]
+    save_draft_name = ['Arrangement_Draft_for_',
+                       ]
+
+    ####################
+    create_cs = ['Create',
+                 '创建']
     new_course_system = ['New Course System',
                          ]
     ask_cs_name = ['Please enter the name of this course system',
@@ -37,6 +49,8 @@ class Translator:
                  ]
     display = ['Display',
                ]
+
+    ####################
     cannot_switch = ['Cannot switch because two sessions are in different modules',
                      ]
     warning = ['Warning',
@@ -44,10 +58,6 @@ class Translator:
     export_csv_name = ['Course_Arrangement_for_',
                        ]
     export_as_csv = ['Export as CSV',
-                     ]
-    save_draft_name = ['Arrangement_Draft_for_',
-                       ]
-    save_as_draft = ['Save as draft',
                      ]
     no_conflict = ['No Conflict...PnP',
                    ]
@@ -77,6 +87,7 @@ class Translator:
         return super().__getattribute__(item)[self.lan]
 
 
+TR = Translator(0)
 if __name__ == '__main__':
     class _Client:  # hide code
         tr1 = Translator(0)  # English translator
